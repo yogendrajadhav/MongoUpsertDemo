@@ -21,4 +21,13 @@ public class Book
     [BsonElement("isDeleted")]
     [BsonDefaultValue(false)]
     public bool IsDeleted { get; set; } = false;
+
+    [BsonElement("deletedAt")]
+    [BsonIgnoreIfNull]
+    public DateTime? DeletedAt { get; set; }
+
+    [BsonElement("deletedBy")]
+    [BsonIgnoreIfNull]
+    public string? DeletedBy { get; set; }
+
 }

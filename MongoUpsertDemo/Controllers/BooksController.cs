@@ -19,7 +19,7 @@ namespace MongoUpsertDemo.Controllers
     [HttpGet]
     public async Task<ActionResult<List<Book>>> GetBooks()
     {
-      return await _bookService.GetBooksAsync();
+      return await _bookService.GetAsync();
     }
 
     [HttpPost("upsert")]
@@ -45,16 +45,18 @@ namespace MongoUpsertDemo.Controllers
       return Ok(book);
     }
 
-    [HttpDelete("{id:length(24)}")]
-    public async Task<IActionResult> SoftDelete(string id)
+// Soft delete with audit info
+   [HttpDelete("{id:length(24)}")]
+    public async Task<IActionResult> SoftDelete(string id,[FromQuery] string deletedBy = "system")
     {
-      var deleted = await _bookService.SoftDeleteAsync(id);
+      var deleted = await _bookService.SoftDeleteAsync(id, deletedBy);
       if (!deleted)
         return NotFound(new { message = "Book not found or already deleted." });
 
       return Ok(new { message = "Book soft-deleted successfully." });
     }
 
+    // Restore
     [HttpPut("restore/{id:length(24)}")]
     public async Task<IActionResult> Restore(string id)
     {

@@ -97,11 +97,14 @@ public class BookService
   }
 
   // Soft delete method
-  public async Task<bool> SoftDeleteAsync(string id)
+  public async Task<bool> SoftDeleteAsync(string id, string deletedBy)
   {
     var filter = Builders<Book>.Filter.Eq(b => b.Id, id);
     var update = Builders<Book>.Update
-      .Set(b => b.IsDeleted, true);
+      .Set(b => b.IsDeleted, true)
+      .Set(b => b.DeletedAt, DateTime.UtcNow)
+      .Set(b => b.DeletedBy, deletedBy); 
+
 
     var result = await _booksCollection.UpdateOneAsync(filter, update);
 
@@ -113,7 +116,10 @@ public class BookService
   {
     var filter = Builders<Book>.Filter.Eq(b => b.Id, id);
     var update = Builders<Book>.Update
-      .Set(b => b.IsDeleted, false);
+      .Set(b => b.IsDeleted, false)
+      .Unset(b => b.DeletedAt)
+      .Unset(b => b.DeletedBy);
+
 
     var result = await _booksCollection.UpdateOneAsync(filter, update);
     return result.ModifiedCount > 0;
