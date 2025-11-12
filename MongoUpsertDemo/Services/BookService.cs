@@ -59,16 +59,6 @@ public class BookService
     await _booksCollection.ReplaceOneAsync(filter, book, options);
   }
 
-  /// <summary>
-  /// Retrieve all books from the collection.
-  /// </summary>
-  /// <returns>List of Book documents.</returns>
-  public async Task<List<Book>> GetBooksAsync()
-  {
-    // Find all documents in the collection and return them as a list.
-    return await _booksCollection.Find(_ => true).ToListAsync();
-  }
-
   // Partial Upsert: Only update provided fields
   public async Task UpsertPartialAsync(Book book) 
   {
@@ -85,16 +75,6 @@ public class BookService
     // isUpsert = true means it will insert if no match found
     await _booksCollection.UpdateOneAsync(filter, update, options);
   }
-  // Get all non-deleted books
-  public async Task<List<Book>> GetAsync()
-  {
-    return await _booksCollection.Find(b => !b.IsDeleted).ToListAsync();
-  }
-
-  // Get a book by Id if not deleted
-  public async Task<Book?> GetByIdAsync(string id) {
-   return await _booksCollection.Find(b => b.Id == id && !b.IsDeleted).FirstOrDefaultAsync();
-  }
 
   // Soft delete method
   public async Task<bool> SoftDeleteAsync(string id, string deletedBy)
@@ -109,6 +89,28 @@ public class BookService
     var result = await _booksCollection.UpdateOneAsync(filter, update);
 
     return result.ModifiedCount > 0;
+  }
+
+  // Get all non-deleted books
+  public async Task<List<Book>> GetAsync()
+  {
+    return await _booksCollection.Find(b => !b.IsDeleted).ToListAsync();
+  }
+
+  /// <summary>
+  /// Retrieve all books from the collection.
+  /// </summary>
+  /// <returns>List of Book documents.</returns>
+  public async Task<List<Book>> GetBooksAsync()
+  {
+    // Find all documents in the collection and return them as a list.
+    return await _booksCollection.Find(_ => true).ToListAsync();
+  }
+
+  // Get a book by Id if not deleted
+  public async Task<Book?> GetByIdAsync(string id)
+  {
+    return await _booksCollection.Find(b => b.Id == id && !b.IsDeleted).FirstOrDefaultAsync();
   }
 
   // (Optional) Restore soft-deleted book
