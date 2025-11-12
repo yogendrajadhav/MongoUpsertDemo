@@ -85,4 +85,38 @@ public class BookService
     // isUpsert = true means it will insert if no match found
     await _booksCollection.UpdateOneAsync(filter, update, options);
   }
+  // Get all non-deleted books
+  public async Task<List<Book>> GetAsync()
+  {
+    return await _booksCollection.Find(b => !b.IsDeleted).ToListAsync();
+  }
+
+  // Get a book by Id if not deleted
+  public async Task<Book?> GetByIdAsync(string id) {
+   return await _booksCollection.Find(b => b.Id == id && !b.IsDeleted).FirstOrDefaultAsync();
+  }
+
+  // Soft delete method
+  public async Task<bool> SoftDeleteAsync(string id)
+  {
+    var filter = Builders<Book>.Filter.Eq(b => b.Id, id);
+    var update = Builders<Book>.Update
+      .Set(b => b.IsDeleted, true);
+
+    var result = await _booksCollection.UpdateOneAsync(filter, update);
+
+    return result.ModifiedCount > 0;
+  }
+
+  // (Optional) Restore soft-deleted book
+  public async Task<bool> RestoreAsync(string id)
+  {
+    var filter = Builders<Book>.Filter.Eq(b => b.Id, id);
+    var update = Builders<Book>.Update
+      .Set(b => b.IsDeleted, false);
+
+    var result = await _booksCollection.UpdateOneAsync(filter, update);
+    return result.ModifiedCount > 0;
+  }
+
 }

@@ -17,4 +17,8 @@ public class Book
 
     [BsonElement("price")]
     public decimal Price { get; set; } = 0;
+
+    [BsonElement("isDeleted")]
+    [BsonDefaultValue(false)]
+    public bool IsDeleted { get; set; } = false;
 }
