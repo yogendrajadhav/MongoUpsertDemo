@@ -72,6 +72,13 @@ public class BookService
   // Partial Upsert: Only update provided fields
   public async Task UpsertPartialAsync(Book book) 
   {
+    // Ensure the book has an Id so Mongo stores it as an ObjectId string.
+    if (string.IsNullOrEmpty(book.Id))
+    {
+      // Generate a new BSON ObjectId and assign its string representation to the model.
+      book.Id = ObjectId.GenerateNewId().ToString();
+    }
+
     var filter = Builders<Book>.Filter.Eq(b => b.Id, book.Id);
     var update =Builders<Book>.Update.Set(b=>b.Title,book.Title).Set(b => b.Author, book.Author).Set(b => b.Price, book.Price);
     var options = new UpdateOptions { IsUpsert = true };
