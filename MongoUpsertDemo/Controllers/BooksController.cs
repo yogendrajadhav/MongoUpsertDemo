@@ -28,5 +28,13 @@ namespace MongoUpsertDemo.Controllers
       await _bookService.UpsertBookAsync(book);
       return Ok(new { message = "Book upserted successfully." });
     }
+
+    [HttpPost("upsert-partial")]
+    public async Task<IActionResult> UpsertPartial(Book book)
+    {
+      await _bookService.UpsertPartialAsync(book);
+      return Ok(new { message = "Book upserted (partial update) successfully." });
+    }
+
   }
 }

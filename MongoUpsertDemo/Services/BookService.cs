@@ -68,4 +68,14 @@ public class BookService
     // Find all documents in the collection and return them as a list.
     return await _booksCollection.Find(_ => true).ToListAsync();
   }
+
+  // Partial Upsert: Only update provided fields
+  public async Task UpsertPartialAsync(Book book) 
+  {
+    var filter = Builders<Book>.Filter.Eq(b => b.Id, book.Id);
+    var update =Builders<Book>.Update.Set(b=>b.Title,book.Title).Set(b => b.Author, book.Author).Set(b => b.Price, book.Price);
+    var options = new UpdateOptions { IsUpsert = true };
+    // isUpsert = true means it will insert if no match found
+    await _booksCollection.UpdateOneAsync(filter, update, options);
+  }
 }
