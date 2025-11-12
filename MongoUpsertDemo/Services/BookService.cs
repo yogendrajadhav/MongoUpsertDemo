@@ -21,7 +21,7 @@ public class BookService
   public BookService(IConfiguration config)
   {
     // Create a MongoClient using the connection string named "MongoDb" from appsettings.
-    // If the connection string is not present or invalid, the MongoClient may throw when used.
+    // If the connection string is not present or invalid, MongoClient will still construct but operations may fail.
     var mongoClient = new MongoClient(config.GetConnectionString("MongoDb"));
 
     // Get (or create) the "BookStore" database reference.
@@ -59,7 +59,14 @@ public class BookService
     await _booksCollection.ReplaceOneAsync(filter, book, options);
   }
 
-  // Partial Upsert: Only update provided fields
+  /// <summary>
+  /// Partial Upsert: updates only specified fields, inserts when no match is found.
+  /// </summary>
+  /// <remarks>
+  /// Uses UpdateOneAsync with UpdateOptions.IsUpsert=true so only the provided fields are set on insert/update.
+  /// This avoids replacing the entire document when only a subset of fields should change.
+  /// </remarks>
+  /// <param name="book">The book containing fields to set. Id must be set or will be generated.</param>
   public async Task UpsertPartialAsync(Book book) 
   {
     // Ensure the book has an Id so Mongo stores it as an ObjectId string.
@@ -69,36 +76,57 @@ public class BookService
       book.Id = ObjectId.GenerateNewId().ToString();
     }
 
+    // Match by Id.
     var filter = Builders<Book>.Filter.Eq(b => b.Id, book.Id);
-    var update =Builders<Book>.Update.Set(b=>b.Title,book.Title).Set(b => b.Author, book.Author).Set(b => b.Price, book.Price);
+
+    // Create an update definition that sets Title, Author and Price fields.
+    var update = Builders<Book>.Update
+      .Set(b => b.Title, book.Title)
+      .Set(b => b.Author, book.Author)
+      .Set(b => b.Price, book.Price);
+
+    // If no document matches the filter, insert a new one with the provided fields.
     var options = new UpdateOptions { IsUpsert = true };
-    // isUpsert = true means it will insert if no match found
+
+    // Apply the update (or insert).
     await _booksCollection.UpdateOneAsync(filter, update, options);
   }
 
-  // Soft delete method
+  /// <summary>
+  /// Soft delete a book by setting IsDeleted flag and audit fields.
+  /// </summary>
+  /// <param name="id">Book Id to soft-delete.</param>
+  /// <param name="deletedBy">User or process performing the delete.</param>
+  /// <returns>True if a document was modified (soft-deleted).</returns>
   public async Task<bool> SoftDeleteAsync(string id, string deletedBy)
   {
+    // Match by Id.
     var filter = Builders<Book>.Filter.Eq(b => b.Id, id);
+
+    // Set the soft-delete marker and audit metadata.
     var update = Builders<Book>.Update
       .Set(b => b.IsDeleted, true)
       .Set(b => b.DeletedAt, DateTime.UtcNow)
       .Set(b => b.DeletedBy, deletedBy); 
 
-
+    // Execute the update and return whether a document was modified.
     var result = await _booksCollection.UpdateOneAsync(filter, update);
 
     return result.ModifiedCount > 0;
   }
 
-  // Get all non-deleted books
+  /// <summary>
+  /// Get all non-deleted books.
+  /// </summary>
+  /// <returns>List of non-deleted Book documents.</returns>
   public async Task<List<Book>> GetAsync()
   {
+    // Filter out soft-deleted documents.
     return await _booksCollection.Find(b => !b.IsDeleted).ToListAsync();
   }
 
   /// <summary>
-  /// Retrieve all books from the collection.
+  /// Retrieve all books from the collection (including deleted ones).
   /// </summary>
   /// <returns>List of Book documents.</returns>
   public async Task<List<Book>> GetBooksAsync()
@@ -107,21 +135,32 @@ public class BookService
     return await _booksCollection.Find(_ => true).ToListAsync();
   }
 
-  // Get a book by Id if not deleted
+  /// <summary>
+  /// Get a single non-deleted book by its Id.
+  /// </summary>
+  /// <param name="id">The book's Id.</param>
+  /// <returns>The Book if found and not deleted; otherwise null.</returns>
   public async Task<Book?> GetByIdAsync(string id)
   {
+    // Find the document that matches the Id and is not soft-deleted.
     return await _booksCollection.Find(b => b.Id == id && !b.IsDeleted).FirstOrDefaultAsync();
   }
 
-  // (Optional) Restore soft-deleted book
+  /// <summary>
+  /// Restore a previously soft-deleted book.
+  /// </summary>
+  /// <param name="id">The book's Id to restore.</param>
+  /// <returns>True if a document was modified (restored).</returns>
   public async Task<bool> RestoreAsync(string id)
   {
+    // Match by Id.
     var filter = Builders<Book>.Filter.Eq(b => b.Id, id);
+
+    // Unset the soft-delete fields and clear audit info.
     var update = Builders<Book>.Update
       .Set(b => b.IsDeleted, false)
       .Unset(b => b.DeletedAt)
       .Unset(b => b.DeletedBy);
-
 
     var result = await _booksCollection.UpdateOneAsync(filter, update);
     return result.ModifiedCount > 0;
