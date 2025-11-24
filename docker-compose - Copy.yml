@@ -1,0 +1,52 @@
+
+services:
+  otel-collector:
+    image: otel/opentelemetry-collector:0.95.0
+    command: ["--config=/etc/otel-collector.yaml"]
+    volumes:
+      - ./otel-collector.yaml:/etc/otel-collector.yaml
+    ports:
+      - "8888:8888" 
+      - "8889:8889" 
+      # Grafana web UI (default username/password: admin/admin)
+      #- "3000:3000"
+      # OTLP gRPC receiver for traces, metrics, and logs
+      - "4317:4317"
+      # OTLP HTTP receiver for traces, metrics, and logs
+      - "4318:4318"
+     # Optional: Healthcheck to ensure services are ready
+    healthcheck:
+      test: cat /tmp/ready
+      interval: 1m
+      timeout: 10s
+      retries: 10
+      start_period: 1m
+      start_interval: 10s
+
+    depends_on:
+      - loki
+  prometheus:
+    image: prom/prometheus:latest
+   
+    ports:
+      - 9090:9090
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+    volumes:
+      - ./prometheus.yml:/etc/prometheus.yml
+
+    restart: unless-stopped
+    
+
+  loki:
+    image: grafana/loki:2.9.0
+    command: -config.file=/etc/loki/local-config.yaml
+    ports:
+      - "3100:3100"
+
+  grafana:
+    image: grafana/grafana:latest
+    ports:
+      - "3000:3000"
+    depends_on:
+      - loki
