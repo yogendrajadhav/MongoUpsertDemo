@@ -1,0 +1,7 @@
+filebeat.inputs:
+  - type: filestream
+    paths:
+      - /app/logs/*.json
+
+output.logstash:
+  hosts: ["logstash:5044"]
